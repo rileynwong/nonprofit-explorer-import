@@ -40,7 +40,7 @@ def convert_folder(dirname):
     datfile = ''
     for root, dirs, files in os.walk(dirname):
         for f in files:
-            if f.endswith('.DAT'): # TODO: Make this case insensitive
+            if f.endswith('.DAT'): # TODO: Make this case insensitive?
                 datfile = os.path.join(root, f)
                 print('.DAT file located: ', datfile)
 
@@ -58,7 +58,7 @@ def convert_folder(dirname):
     progress_num = 0.0
     progress_den = 0
 
-    # Optional: Get number of lines just so we can track progress
+    # Optional: Get total number of lines just so we can track progress
     with open(datfile) as f:
         for i, l in enumerate(f):
             pass
@@ -71,9 +71,9 @@ def convert_folder(dirname):
         reader = csv.reader(f, delimiter=',') # Comma-delimited
 
         for line in reader:
-            ein = line[0]
-            todo_1 = line[1]
-            todo_2 = line[2]
+            todo_1 = line[0]
+            todo_2 = line[1]
+            ein = line[2]
             tax_period = line[3]
             org_name = line[4]
             state = line[5]
@@ -90,30 +90,31 @@ def convert_folder(dirname):
             # TODO: Should we use a generator instead of a for loop and split
             #   up parsing and converting as two different tasks?
 
-            # Convert!
-            progress_num = progress_num + 1
-            tiff_string = tiff_list_to_string(dirname, tiff_list)
 
-            # Format target directory name and file name
-            # TODO add a hyphen to EIN
-            target_pdf = '_'.join([ein, filing_type, tax_period]) + '.pdf'
+            # Format target directory name and filenames to run command
+            tiff_string = tiff_list_to_string(dirname, tiff_list)
+            formatted_ein = format_ein(ein)
+            target_pdf = '_'.join([formatted_ein, filing_type, tax_period]) + '.pdf'
             target_path = os.path.join(target_dir, target_pdf)
             print(target_path)
 
-            suppress_warnings = '2>/dev/null'
-            os_command = 'convert ' + tiff_string + ' ' + target_path + ' ' + suppress_warnings
-
             # Convert multiple TIFFs into one PDF
+            suppress_warnings = '2>/dev/null' # Optional
+            os_command = 'convert ' + tiff_string + ' ' + target_path + ' ' + suppress_warnings
             os.system(os_command)
 
+            # Track progress
+            progress_num = progress_num + 1
             print('Progress: ' + str(progress_num / progress_den) + ' (' + str(progress_num) + '/' + str(progress_den) + ')')
 
 
 def tiff_list_to_string(dirname, tiff_list):
     """
-    Convert a list of TIF files into one string separated by a space. e.g.
-    Input: ['T:\\0ecd4d44.TIF', 'T:\\0ecd4d45.TIF', 'T:\\0ecd4d46.TIF']
-    Output: '2018_01_T/0ecd4d44.TIF 2018_01_T/0ecd4d45.TIF 2018_01_T/0ecd4d46.TIF'
+    Convert a list of TIF files into one string separated by a space,
+        Format string as DIRNAME/FILENAME.TIF
+    e.g.
+        Input: ['T:\\0ecd4d44.TIF', 'T:\\0ecd4d45.TIF', 'T:\\0ecd4d46.TIF']
+        Output: '2018_01_T/0ecd4d44.TIF 2018_01_T/0ecd4d45.TIF 2018_01_T/0ecd4d46.TIF'
     """
     # Use full path, strip tif prefix, e.g. remove T://
     stripped = [os.path.join(dirname,tiff[3:]) for tiff in tiff_list]
@@ -121,6 +122,17 @@ def tiff_list_to_string(dirname, tiff_list):
     # Join list into string
     tiff_string = ' '.join(stripped)
     return tiff_string
+
+
+def format_ein(ein):
+    """
+    Convert an unformatted EIN number (in string format) to the hyphenated format.
+    e.g.
+        Input: 751107227
+        Output: 75-1107227
+    """
+    formatted_ein = ein[:2] + '-' + ein[2:]
+    return formatted_ein
 
 
 # Test on sample directory
